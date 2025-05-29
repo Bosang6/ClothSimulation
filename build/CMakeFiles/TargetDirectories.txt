@@ -1,0 +1,3 @@
+/Users/xiaobo/Desktop/OpenGL/ClothSimulation/build/CMakeFiles/ClothSimulation.dir
+/Users/xiaobo/Desktop/OpenGL/ClothSimulation/build/CMakeFiles/edit_cache.dir
+/Users/xiaobo/Desktop/OpenGL/ClothSimulation/build/CMakeFiles/rebuild_cache.dir
