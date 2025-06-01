@@ -15,6 +15,15 @@ using namespace std;
 #define MAX_BONE_INFLUENCE 4
 
 
+struct EdgeIndex {
+    int i0, i1, triangleIndex;
+    float length;
+};
+
+struct Triangle{
+    int index, i0, i1, i2;
+};
+
 struct Vertex_H {
     glm::vec3 Position;
     glm::vec3 Normal;
@@ -27,8 +36,12 @@ struct Vertex_H {
     glm::vec3 Acceleration;
     glm::vec3 newPosition = glm::vec3(0.0f, 0.0f, 0.0f); // Jacobbian method
     int index = -1; // 用于索引
+
     float mass;
-    float radius = 0.03f; // 0.03-0.15, 0.05-0.2 ...
+    float radius = 0.8f; // 0.03-0.15, 0.05-0.2 ...
+    glm::vec3 initPosition; // 初始位置
+
+    int modelIndex = -1; // 模型索引
 
     glm::vec3 Tangent;
     glm::vec3 Bitangent;
@@ -56,12 +69,16 @@ class Mesh {
         unsigned int VAO;
         unsigned int VBO, EBO;
 
+        std::vector<EdgeIndex> tempEdgeList;
+        std::vector<Triangle> triangles; // 三角形索引
+
         /* functions */
-        Mesh(vector<Vertex_H> vertices, vector<unsigned int> indices, vector<Texture_H> textures){
+        Mesh(vector<Vertex_H> vertices, vector<unsigned int> indices, vector<Texture_H> textures, std::vector<EdgeIndex> tempEdgeList, std::vector<Triangle> triangles) {
             this->vertices = vertices;
             this->indices = indices;
             this->textures = textures;
-
+            this->tempEdgeList = tempEdgeList;
+            this->triangles = triangles;
             setupMesh();
         }
 
@@ -96,6 +113,8 @@ class Mesh {
 
             glActiveTexture(GL_TEXTURE0);
         }
+        
+        
         // for change model
         void cleanup(){
             if(VAO != 0){

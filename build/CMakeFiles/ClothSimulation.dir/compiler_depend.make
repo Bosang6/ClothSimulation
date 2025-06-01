@@ -3224,6 +3224,7 @@ CMakeFiles/ClothSimulation.dir/src/main.cpp.o: /Users/xiaobo/Desktop/OpenGL/Clot
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/queue \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/random \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/ratio \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/set \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/sstream \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/stack \
   /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/stddef.h \
@@ -3842,10 +3843,6 @@ CMakeFiles/ClothSimulation.dir/src/main.cpp.o: /Users/xiaobo/Desktop/OpenGL/Clot
 /Users/xiaobo/Desktop/OpenGL/ClothSimulation/external/glm/fwd.hpp:
 
 /Users/xiaobo/Desktop/OpenGL/ClothSimulation/external/glm/detail/type_half.inl:
-
-/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__filesystem/path_iterator.h:
-
-/Users/xiaobo/Desktop/OpenGL/ClothSimulation/external/glm/ext/vector_uint4_sized.hpp:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/mach/processor_set.h:
 
@@ -5248,6 +5245,8 @@ CMakeFiles/ClothSimulation.dir/src/main.cpp.o: /Users/xiaobo/Desktop/OpenGL/Clot
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/CipherSuite.h:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/objc/objc-api.h:
+
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/set:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/SecReadTransform.h:
 
@@ -6982,6 +6981,10 @@ CMakeFiles/ClothSimulation.dir/src/main.cpp.o: /Users/xiaobo/Desktop/OpenGL/Clot
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/Security.framework/Headers/Security.h:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/all_of.h:
+
+/Users/xiaobo/Desktop/OpenGL/ClothSimulation/external/glm/ext/vector_uint4_sized.hpp:
+
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__filesystem/path_iterator.h:
 
 /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__locale_dir/locale_base_api/bsd_locale_defaults.h:
 

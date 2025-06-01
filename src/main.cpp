@@ -39,6 +39,7 @@ const unsigned int SCR_HEIGHT = 600;
 // Camera
 //Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 Camera camera(glm::vec3(0.0f, 24.0f, 45.0f));
+//Camera camera(glm::vec3(0.0f, 1.5f, 2.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -62,12 +63,46 @@ std::vector<Model> models;
 
 std::vector<Vertex_H*> allParticles;                    // 所有粒子（布料 + 衣架）
 std::unordered_set<Vertex_H*> staticParticles;          // 记录哪些粒子是“静态”的（不可移动，如衣架）
+std::vector<Edge*> edges;                            // 用于边长约束
+std::vector<Edge*> bendingEdges;                    // 用于弯曲约束
 
 // model size
 float modelSize = 0.5f;
 
 // start simulate
 bool start = false;
+
+void drawParticlesAsSpheres(Shader &shader) {
+    glBindVertexArray(0); // 确保解绑 VAO，防止 model 的 VAO 干扰
+
+    std::vector<glm::vec3> particlePositions;
+    for (auto& p : allParticles) {
+        particlePositions.push_back(p->Position);
+    }
+
+    static GLuint vao = 0, vbo = 0;
+    if (vao == 0) {
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, particlePositions.size() * sizeof(glm::vec3), NULL, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    }
+
+    // 更新粒子位置
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, particlePositions.size() * sizeof(glm::vec3), particlePositions.data());
+
+    shader.setBool("drawAsSphere", true);
+    shader.setFloat("pointSize", 20.0f);
+    glDrawArrays(GL_POINTS, 0, particlePositions.size());
+
+    glBindVertexArray(0);
+}
+
 
 int main() {
     glfwInit();
@@ -115,44 +150,61 @@ int main() {
     //static std::string selectedFile = "Models/backpack/backpack.obj";
 
     //models.push_back(Model("Models/maoyi/YIFU5obj.obj"));
-    models.push_back(Model("Models/maoyi/YIFU5obj.obj"));
+    //models.push_back(Model("Models/maoyi/nuSe.obj", 0));
+    models.push_back(Model("Models/maoyi/nuSeY.obj", 0));
+    int vertexCount = 0;
+    for(auto &mesh : models[0].meshes) {
+        vertexCount += mesh.vertices.size();
+    }
+    //models.push_back(Model("Models/maoyi/qiu.obj", vertexCount));
+
+
+    //models.push_back(Model("Models/maoyi/YJ.obj", 0));
+    //models.push_back(Model("Models/S/yifu.obj", vertexCount));
+
+
     //models.push_back(Model("Models/maoyi/mote.obj"));
-    //models.push_back(Model("Models/maoyi/YIJIA5obj.obj"));
     //Model ModelLoaded("Models/maoyi/YIFU1.obj");
 
 
      // 合并所有的顶点
     for (auto &model : models)
     {
-        bool isStaticModel = (model.name == "Models/maoyi/YIJIA5obj.obj");
+        bool isStaticModel = (model.name == "Models/maoyi/qiu.obj");
         std::cout << "Model name: " << model.name << std::endl;
         for (auto &mesh : model.meshes)
         {
             for (auto &vertex : mesh.vertices)
             {
                 if(isStaticModel){
-                    vertex.mass = 1e6f; // 静态模型的顶点质量设置为很大，避免移动
+                    //vertex.mass = 0.0f; // 静态模型的顶点质量设置为很大，避免移动
                     staticParticles.insert(&vertex);
                 }
-
                 allParticles.push_back(&vertex);
             }
         }
+        for(auto &edge : model.edgeList){
+            edges.push_back(&edge);
+        }
+        for(auto &bendingEdge : model.bendingEdges){
+            bendingEdges.push_back(&bendingEdge);
+        }
+        printf("edge size: %zu\n", edges.size());
     }
-    std::cout << "staticParticles.size(): " << staticParticles.size() << std::endl;
+
+
+
     // 通过所有的顶点构建哈希空间
     //Hash hash(allParticles.size());
     Hash hash(allParticles.size(), &staticParticles);
-    hash.insertParticles(allParticles);
-    hash.partialSum();
-    hash.insertParticleMap();
 
     static std::string selectedFile = "Models/lino/YIFU1.obj";
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glEnable(GL_PROGRAM_POINT_SIZE); 
 
     // 初始化 simulator
-    Simulator simulator(allParticles, staticParticles, models, hash);
+    Simulator simulator(allParticles, edges, bendingEdges, staticParticles, models, hash);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = (float)glfwGetTime();
@@ -217,7 +269,7 @@ int main() {
 
                 //ModelLoaded.cleanup();
                 //ModelLoaded = Model(selectedFile);
-                models.push_back(Model(selectedFile));
+                models.push_back(Model(selectedFile, 0));
             }
             else {
                 selectedFile = "No file selected.";
@@ -245,11 +297,20 @@ int main() {
         // simulator
         if(start){
             //models[0].simulate(deltaTime);
-            simulator.step(deltaTime);
+            //simulator.step(deltaTime);
+
+            simulator.simulate(deltaTime, 10); // 10 substeps per frame
             //simulator.substep(deltaTime);
-            for(unsigned int i = 0; i < models[0].meshes.size(); i++){
-                models[0].meshes[i].updateVertexPositions();
+
+            for(Model m : models){
+                for(unsigned int i = 0; i < m.meshes.size(); i++){
+                    m.meshes[i].updateVertexPositions();
+                }
             }
+            // for(unsigned int i = 0; i < models[0].meshes.size(); i++){
+            //     models[0].meshes[i].updateVertexPositions();
+            // }
+
             //hash.queryAndCollideAll(0.1f); copilot 说要重新建立哈希表
             // 重新构建哈希表，保证碰撞检测用的是最新粒子位置
             // hash.clear(); // 清空之前的哈希表
@@ -273,6 +334,9 @@ int main() {
         //shader.setVec3("lightPos", camera.Front);
         shader.setVec3("viewPos", camera.Position);
 
+        // shader.setBool("drawAsSphere", true);
+        // shader.setFloat("pointSize", 20.0f); // 根据需要设置点大小
+
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
         shader.setMat4("projection", projection);
@@ -287,6 +351,7 @@ int main() {
         for (size_t i = 0; i < models.size(); ++i) {
             models[i].Draw(shader);
         }
+        //drawParticlesAsSpheres(shader);
         //ModelLoaded.Draw(shader);
 
         // ImGui render

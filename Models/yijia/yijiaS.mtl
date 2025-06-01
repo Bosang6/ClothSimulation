@@ -1,0 +1,22 @@
+# Blender 4.4.3 MTL File: 'None'
+# www.blender.org
+
+newmtl Material__165.001
+Ns 101.119995
+Ka 1.000000 1.000000 1.000000
+Ks 0.900000 0.900000 0.900000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd /Users/xiaobo/Desktop/OpenGL/ClothSimulation/Models/maoyi/C:/Users/a1173/Downloads/51-hanging-shirt-by-camille-kleinman/Shirt_Dolman Shirt by CG Elves/Shirt_Dolman_v1_b_68kpolys/wood_2.jpg
+
+newmtl Material__166.001
+Ns 23.039993
+Ka 1.000000 1.000000 1.000000
+Ks 0.900000 0.900000 0.900000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd /Users/xiaobo/Desktop/OpenGL/ClothSimulation/Models/maoyi/C:/Users/a1173/Downloads/51-hanging-shirt-by-camille-kleinman/Shirt_Dolman Shirt by CG Elves/Shirt_Dolman_v1_b_68kpolys/metal2.jpg

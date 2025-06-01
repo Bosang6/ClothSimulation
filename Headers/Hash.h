@@ -18,14 +18,20 @@ struct Cell{
 class Hash{
     int tableSize;
     std::vector<Cell> cellCount;
-    float hashing = 0.15f;
+    float hashing = 1.5f;
 
     vector<Vertex_H*> particleMap;
+    vector<Vertex_H*> queryParticles; // 备选碰撞粒子集合
+    const std::vector<Vertex_H*>* allParticles = nullptr;
+
+    int querySize = 0; 
 
     // ⬇️ 新增：静态粒子集合指针
     const std::unordered_set<Vertex_H*>* staticParticles;
 
 public:
+    vector<int> firstAdjId;           // index: 粒子在 particles的位置， value: 该粒子有几个产生碰撞的粒子
+    vector<int> adjIds;               // index: 
     // Hash(int particlesSize){
     //     this->tableSize = particlesSize * 2 + 1;
     //     cellCount.resize(tableSize + 1);
@@ -35,13 +41,18 @@ public:
     Hash(int particleCount, const std::unordered_set<Vertex_H*>* statics = nullptr)
         : staticParticles(statics)
     {
-        tableSize = particleCount * 2 + 1;
+        tableSize = particleCount * 5;
         cellCount.resize(tableSize + 1);
         particleMap.resize(particleCount);
+        queryParticles.resize(particleCount);
+        firstAdjId.resize(particleCount + 1, -1);
+        adjIds.resize(particleCount * 10, -1); // 假设每个粒子最多有10个邻接粒子
     }
 
     // 计数 + 链表
     void insertParticles(const vector<Vertex_H*> &vertices){
+        allParticles = &vertices; // 保存指向粒子集合的指针
+
         for(unsigned int i = 0; i < vertices.size(); i++){
             int index = hashPos(vertices[i]->Position);
             if(index >= 0 && index < cellCount.size()){
@@ -52,8 +63,10 @@ public:
     }
 
     void partialSum(){
-        for(unsigned int i = 1; i <= tableSize; i++){
-            cellCount[i].count += cellCount[i - 1].count;
+        int value = 0;
+        for(unsigned int i = 0; i <= tableSize; i++){
+            value += cellCount[i].count;
+            cellCount[i].count = value;
         }
     }
 
@@ -78,12 +91,14 @@ public:
 
     void insertParticleMap() {
         int writeIndex = 0;
-        for (size_t i = 0; i < cellCount.size(); ++i) {
+    
+        for (int i = 0; i < cellCount.size(); ++i) {
+            if(cellCount[i].count == 0) continue; // 如果没有粒子，跳过
             for (Vertex_H* p : cellCount[i].particles) {
-                if (writeIndex < (int)particleMap.size()) {
+                if (writeIndex < particleMap.size()) {
                     particleMap[writeIndex++] = p;
                 } else {
-                    std::cerr << "[Error] particleMap overflow at index " << writeIndex << std::endl;
+                    std::cout << "[Error] particleMap overflow at index " << writeIndex << std::endl;
                     break;
                 }
             }
@@ -93,13 +108,13 @@ public:
 
 
 
-    int hashPos(glm::vec3 pos){
+    int64_t hashPos(glm::vec3 pos){
         int x = static_cast<int>(floor(pos.x / hashing));
         int y = static_cast<int>(floor(pos.y / hashing));
         int z = static_cast<int>(floor(pos.z / hashing));
         int64_t hash = (int64_t(x) * 92837111) ^ (int64_t(y) * 689287499) ^ (int64_t(z) * 283923481);
         
-        return static_cast<int>(std::abs(hash)) % tableSize;
+        return std::abs(hash) % tableSize;
     }
 
     void queryAndCollideAll(float radius){
@@ -217,18 +232,84 @@ public:
         }
     }
 
-    // void queryAll(float maxDist){
-    //     int num = 0;
-    //     float maxDist2 = maxDist * maxDist;
-        
-    //     for(unsigned int i = 0; i < particleMap.size(); i++){
-    //         Vertex_H *p = particleMap[i];
-    //         if(!p) continue;
-            
-    //         int index = i;
+    void queryAll(float maxDist){
+        int num = 0;
+        float maxDist2 = maxDist * maxDist;
 
-    //     }
-    // }
+        // 保证 firstAdjId 足够大
+        if (firstAdjId.size() < particleMap.size() + 1) {
+            firstAdjId.resize(particleMap.size() + 1, -1);
+        }
+        // 保证 adjIds 有初始空间
+        if (adjIds.size() < particleMap.size() * 10) { // 8是经验值，可根据实际调整
+            adjIds.resize(particleMap.size() * 10);
+        }
+        
+        for(int i = 0; i < particleMap.size(); i++){
+            int id0 = i;
+            firstAdjId[id0] = num; // 记录第一个邻接粒子的位置
+            querySize = 0; // 重置查询大小
+            query(id0, maxDist); // 查询粒子邻域
+
+            for(int j = 0; j < querySize; j++){ // 遍历所有备选碰撞粒子
+                int id1 = queryParticles[j]->index;      // 获取备选粒子的索引
+                if(id1 >= id0) continue;                 // 确保 id1 < id0，避免重复计算
+                float dist2 = glm::length(particleMap[id0]->Position - queryParticles[j]->Position); // 计算粒子间距离的平方
+                dist2 *= dist2; // 计算距离的平方
+
+                if(dist2 > maxDist2) continue; // 如果距离大于 maxDist，则跳过
+
+                if(num >= adjIds.size()){
+                    adjIds.resize(num * 2); // 确保 adjIds 有足够的空间
+                }
+
+                adjIds[num++] = id1; // 将邻接粒子索引存入 adjIds
+            }
+        }
+
+
+        firstAdjId[particleMap.size()] = num; // 记录最后一个邻接粒子的位置
+    }
+
+    void query(int id, float maxDist){
+        if(id < 0 || id >= (int)particleMap.size()) return;
+        
+        //Vertex_H *p = particleMap[id];
+        Vertex_H *p = (*allParticles)[id];
+
+        if(!p) return;
+
+        querySize = 0; // 重置查询大小
+
+        glm::vec3 pos = p->Position;
+        int x0 = static_cast<int>(pos.x - maxDist);         // 坐标最小的格子
+        int y0 = static_cast<int>(pos.y - maxDist);
+        int z0 = static_cast<int>(pos.z - maxDist);
+
+        int x1 = static_cast<int>(pos.x + maxDist);         // 坐标最大的格子
+        int y1 = static_cast<int>(pos.y + maxDist);
+        int z1 = static_cast<int>(pos.z + maxDist);
+
+        for(int xi = x0; xi <= x1; xi++){
+            for(int yi = y0; yi <= y1; yi++){
+                for(int zi = z0; zi <= z1; zi++){
+                    int64_t h = hashPos(glm::vec3(xi, yi, zi));
+
+                    if(h < 0 || h + 1 >= cellCount.size()){
+                        printf("Hash index out of bounds: %lld\n", h);
+                        continue; // 跳过无效的哈希索引
+                    }
+
+                    int start = cellCount[h].count;
+                    int end = cellCount[h + 1].count;
+
+                    for(unsigned int i = start; i < end; i++){
+                        queryParticles[querySize++] = particleMap[i];  // queryParticles 备选碰撞粒子指针
+                    }
+                }
+            }
+        }
+    }
 
 
 };

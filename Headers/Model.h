@@ -25,6 +25,7 @@
 #include <sstream>
 #include <iostream>
 #include <map>
+#include <set>
 
 #include <random>
 
@@ -36,7 +37,11 @@ struct Edge{
     Vertex_H *v0;
     Vertex_H *v1;
     float lenght;
+    int triangleIndex; // for simulation, index
+    int triangleIndex2; // for simulation, index
 };
+
+
 
 class Model {
 public:
@@ -47,16 +52,39 @@ public:
     bool gammaCorrection;
 
     // 模拟用
+    std::vector<EdgeIndex> edgeIndices; // 边索引
+    std::vector<Triangle> triangles; // 三角形索引
+
     std::vector<Edge> edgeList;
-    // bool handleCollision = true; // 是否处理碰撞
+    std::vector<Edge> bendingEdges; // 绑定边
+    std::map<int, std::vector<Vertex_H*>> triangleVertices; // 三角形顶点索引
+    std::map<std::pair<int, int>, int> edgeToTriangle; // 边 -> 三角形索引
+    bool handleCollision = true; // 是否处理碰撞
+
+    int vertexLoaded = 0; // 顶点数量
 
     string name;
 
+    // 检测一个三角形是否bending了三个不同的三角形
+    std::vector<int> bendingTriangles; // 用于存储bending的三角形索引
+    std::map<std::pair<int, int>, std::vector<int>> edgeWithVertex; // 边 -> bending三角形索引
+    std::vector<Vertex_H*> allParticles; // 所有粒子
+    std::vector<Vertex_H*> unionParticles; // 静态粒子（不可移动，如衣架）
 
-    Model(string const& path, bool gamma = false) : gammaCorrection(gamma) {
+
+    Model(string const& path, int vertexCount,bool gamma = false) : gammaCorrection(gamma) {
         //stbi_set_flip_vertically_on_load(true);
+        this->vertexLoaded = vertexCount;
         loadModel(path);
         this->name = path;
+        //bendEdges(); // 5400
+        //bendEdges2(); // 5400
+        bendEdges3(); //40266
+        std::cout << "bending edges: " << bendingEdges.size() << std::endl;
+        std::cout << "edge list size: " << edgeList.size() << std::endl;
+        //bendingToEdges();
+        // std::cout << "bending edges: " << bendingEdges.size() << std::endl;
+        // std::cout << "edge list size: " << edgeList.size() << std::endl;
     }
     void Draw(Shader& shader) {
         for (unsigned int i = 0; i < meshes.size(); i++)
@@ -145,7 +173,7 @@ private:
                      - aiProcess_SplitLargeMeshes: Splitting a larger Mesh into smaller sub-Meshes is very useful if the rendering has a maximum vertex limit and can only render smaller Meshes.
                      - aiProcess_OptimizeMeshes: Combine multiple small meshes into one large mesh to reduce draw calls and optimize
         */
-        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
             cout << "ERROR::ASSIMP::" << importer.GetErrorString() << endl;
@@ -156,6 +184,27 @@ private:
 
         // DFS Recursively traverse all nodes. The nodes of the model exist in a tree structure (such as a car model)
         processNode(scene->mRootNode, scene);
+    
+        for (Mesh& mesh : meshes) {
+            for (auto& e : mesh.tempEdgeList) {
+                Vertex_H* v0 = &mesh.vertices[e.i0];
+                Vertex_H* v1 = &mesh.vertices[e.i1];
+                edgeList.push_back({ v0, v1, e.length, e.triangleIndex });
+            }
+            for(Triangle& t : mesh.triangles){
+                int i = t.index;
+                int i0 = t.i0;
+                int i1 = t.i1;
+                int i2 = t.i2;
+                triangleVertices[i].push_back(&mesh.vertices[i0]);
+                triangleVertices[i].push_back(&mesh.vertices[i1]);
+                triangleVertices[i].push_back(&mesh.vertices[i2]);
+            }
+            for(auto& v : mesh.vertices) {
+                allParticles.push_back(&v);
+            }
+        }
+
     }
 
     /* DFS
@@ -198,7 +247,14 @@ private:
             glm::vec3 vector; // Assimp has its own set of data types for vectors, matrices, and strings, 
             // which must be converted through a vec3
 
-            vertex.index = i; // for simulation, index
+            vertex.index = i + vertexLoaded; // for simulation, index
+
+            if(vertexLoaded == 0){
+                vertex.modelIndex = 0;
+            }
+            else{
+                vertex.modelIndex = 1;
+            }
 
             // Position
             vector.x = mesh->mVertices[i].x;
@@ -214,6 +270,7 @@ private:
             vertex.OldVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
             vertex.mass = 1.0f;
             vertex.OldPosition = vertex.Position;
+            vertex.initPosition = vertex.Position; // 初始位置
           
             // Normal
             if (mesh->HasNormals()) {
@@ -255,14 +312,14 @@ private:
         // (if there are quads or polygons, they are usually cut into triangles),
         // we need to load the drawing order
         // Then use glDrawElements to drawing
-        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+        for (int i = 0; i < mesh->mNumFaces; i++) {
             aiFace face = mesh->mFaces[i];
 
             if(face.mNumIndices != 3) continue; // 不是三角图元！
 
-            unsigned int i0 = face.mIndices[0];
-            unsigned int i1 = face.mIndices[1];
-            unsigned int i2 = face.mIndices[2];
+            int i0 = face.mIndices[0];
+            int i1 = face.mIndices[1];
+            int i2 = face.mIndices[2];
 
             // 添加边 （边为两个指针 + 边的长度）
             float l1 = glm::length(vertices[i0].Position - vertices[i1].Position);
@@ -270,11 +327,21 @@ private:
             float l3 = glm::length(vertices[i2].Position - vertices[i0].Position);
 
             //std::cout << l1 << ", " << l2 << ", " << l3 << std::endl;
+            // a粒子 b粒子 ab长度 i三角图元下标
+            // edgeList.push_back({ &vertices[i0], &vertices[i1], l1, i});
+            // edgeList.push_back({ &vertices[i1], &vertices[i2], l2, i});
+            // edgeList.push_back({ &vertices[i2], &vertices[i0], l3, i});
 
-            edgeList.push_back({ &vertices[i0], &vertices[i1], l1});
-            edgeList.push_back({ &vertices[i1], &vertices[i2], l2});
-            edgeList.push_back({ &vertices[i2], &vertices[i1], l3});
+            edgeIndices.push_back({ i0, i1, i, l1 });
+            edgeIndices.push_back({ i1, i2, i, l2 });
+            edgeIndices.push_back({ i2, i0, i, l3 });
 
+            // i 三角图元下标 对应的三个顶点
+            //triangleVertices[i] = { &vertices[i0], &vertices[i1], &vertices[i2] };
+            triangles.push_back({ i ,i0, i1, i2 });
+            // triangleVertices[i].push_back(&vertices[i0]);
+            // triangleVertices[i].push_back(&vertices[i1]);
+            // triangleVertices[i].push_back(&vertices[i2]);
             
             // edgeList.push_back({ &vertices[i0], &vertices[i1], glm::length(vertices[i0].Position - vertices[i1].Position)});
             // edgeList.push_back({ &vertices[i1], &vertices[i2], glm::length(vertices[i1].Position - vertices[i2].Position)});
@@ -312,7 +379,7 @@ private:
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
         // return a mesh object created from the extracted mesh data
-        return Mesh(vertices, indices, textures);
+        return Mesh(vertices, indices, textures, edgeIndices, triangles);
     }
     
     vector<Texture_H> loadMaterialTextures(aiMaterial* mat, aiTextureType type, string typeName) {
@@ -350,13 +417,241 @@ private:
         return textures;
     }
 
-    int hashPos(glm::vec3 pos){
-        float x = pos.x;
-        float y = pos.y;
-        float z = pos.z;
-        int64_t hash = (int64_t(x) * 92837111) ^ (int64_t(y) * 689287499) ^ (int64_t(z) * 283923481);
+    /*
+        绑定边过程：
+        1. 对边进行排序，按照三角图元下标、顶点下标排序
+        2. 遍历边列表，提取边的两个顶点和三角图元索引
+        3. 使用边的两个顶点的索引作为键，三角图元索引作为值，存储在 edgeToTriangle 中
+        4. 如果边不存在，则添加到 edgeToTriangle 中
+        5. 如果边已经存在，则获取左边相邻三角形的索引，并将右边三角形的顶点与左边三角形的顶点进行比较
+        6. 如果左边三角形有这个顶点，则删除，否则添加
+        7. 绑定边：如果左边三角形和右边三角形的顶点集合中只剩下两个顶点，则创建一个新的边，并将其添加到 bendingEdges 中
+        8. 清空顶点集合
+    */
+    void bendEdges() {
+        bendingTriangles.resize(triangleVertices.size(), 0); // 测试
+
+        // 对边进行排序
+        std::sort(edgeList.begin(), edgeList.end(), [](const Edge &a, const Edge &b) {
+            if(a.triangleIndex != b.triangleIndex) {
+                return a.triangleIndex < b.triangleIndex; // 按照三角图元下标排序
+            }
+            if(a.v0->index != b.v0->index) {
+                return a.v0->index < b.v0->index; // 按照第一个顶点下标排序
+            }
+            return a.v1->index < b.v1->index; // 按照第二个顶点下标排序
+        });
+
+        // 把边加入 edgeToTriangle 中，如果有相同的边， 提取边所对应的三角图元索引
+        for (int i = 0; i < edgeList.size(); i++) {
+            Edge &edge = edgeList[i];
+            int a = edge.v0->index;
+            int b = edge.v1->index;
+            int c = edge.triangleIndex; // 右边 相邻三角形的索引
+            std::pair<int, int> edgeKey;
+            if (a > b) {
+                edgeKey = std::make_pair(b, a);
+            }
+            else{
+                edgeKey = std::make_pair(a, b);
+            }
+
+            // 如果边不存在，则添加
+            if(edgeToTriangle.find(edgeKey) == edgeToTriangle.end()) {
+                edgeToTriangle[edgeKey] = c; // 如果没有这个边，则添加
+            }
+            else {
+                // 获取 左边 相邻三角形的索引
+                int triangleIndex = edgeToTriangle[edgeKey];
+
+                // std::vector<Vertex_H*>& verticesLeft = triangleVertices[triangleIndex];
+
+                // std::set<Vertex_H*> vertexSet;
+                // for(Vertex_H* v : verticesLeft) {
+                //     vertexSet.insert(v);
+                // }
+
+                // std::vector<Vertex_H*>& verticesRight = triangleVertices[c]; // 获取右边三角形的顶点
+                // for(Vertex_H* v : verticesRight) {
+                //     if(vertexSet.find(v) == vertexSet.end()) {
+                //         vertexSet.insert(v);
+                //     }
+                //     else{
+                //         vertexSet.erase(v); // 如果左边三角形有这个顶点，则删除
+                //     }
+                // }
+                auto& vertsA = triangleVertices[triangleIndex];
+                auto& vertsB = triangleVertices[c];
+
+                std::set<Vertex_H*> vertexSet(vertsA.begin(), vertsA.end());
+                for (Vertex_H* v : vertsB) {
+                    if (!vertexSet.erase(v)) {
+                        vertexSet.insert(v);
+                    }
+                }
+
+                // 绑定边
+                Edge bendingEdge;
+                if(vertexSet.size() == 2) {
+                    auto it = vertexSet.begin();
+                    bendingEdge.v0 = *it; // 第一个顶点
+                    it++;
+                    bendingEdge.v1 = *it; // 第二个顶点
+                    bendingEdge.lenght = glm::length(bendingEdge.v0->Position - bendingEdge.v1->Position);
+                    bendingEdge.triangleIndex = c; // 绑定边的三角图元索引
+                    bendingEdges.push_back(bendingEdge);
+                }
+                
+                vertexSet.clear(); // 清空顶点集合
+
+                bendingTriangles[triangleIndex]++; // 记录绑定的三角图元索引
+            }
         
-        return static_cast<int>(std::abs(hash));
+        }
+
+        for(int i = 0; i < bendingTriangles.size(); i++) {
+            std::cout << "Triangle " << i << " bending count: " << bendingTriangles[i] << std::endl;
+        }
+
+    }
+
+    void bendEdges2() {
+        // 对边进行排序
+        std::cout << "Edges: " << edgeList.size() << std::endl;
+        std::sort(edgeList.begin(), edgeList.end(), [](const Edge &a, const Edge &b) {
+            if(a.triangleIndex != b.triangleIndex) {
+                return a.triangleIndex < b.triangleIndex; // 按照三角图元下标排序
+            }
+            if(a.v0->index != b.v0->index) {
+                return a.v0->index < b.v0->index; // 按照第一个顶点下标排序
+            }
+            return a.v1->index < b.v1->index; // 按照第二个顶点下标排序
+        });
+
+        // 对于任意一条边，存在对应独立顶点
+        for(Triangle &t : triangles){
+            int a = t.i0;
+            int b = t.i1;
+            int c = t.i2;
+
+            std::pair<int, int> edgeAB;
+            std::pair<int, int> edgeAC;
+            std::pair<int, int> edgeBC;
+
+            if(a > b) {
+                edgeAB = std::make_pair(b, a);
+            }
+            else{
+                edgeAB = std::make_pair(a, b);
+            }
+            if(a > c) {
+                edgeAC = std::make_pair(c, a);
+            }
+            else{
+                edgeAC = std::make_pair(a, c);
+            }
+            if(b > c) {
+                edgeBC = std::make_pair(c, b);
+            }
+            else{
+                edgeBC = std::make_pair(b, c);
+            }
+
+            edgeWithVertex[edgeAB].push_back(c);
+            edgeWithVertex[edgeAC].push_back(b);
+            edgeWithVertex[edgeBC].push_back(a);
+        }
+
+        for (const auto& [_, triangleList] : edgeWithVertex) {
+            // triangleList 就是 std::vector<int>
+            if (triangleList.size() >= 2) {
+                // 绑定边
+                int t0 = triangleList[0];
+                int t1 = triangleList[1];
+
+                Edge bendingEdge;
+                bendingEdge.v0 = allParticles[t0];
+                bendingEdge.v1 = allParticles[t1];
+                bendingEdge.lenght = glm::length(bendingEdge.v0->Position - bendingEdge.v1->Position);
+                bendingEdge.triangleIndex = -1; // 绑定边的三角图元索引
+                bendingEdges.push_back(bendingEdge);
+            }
+        }
+    }
+
+    void bendEdges3() {
+        for(Edge &e1 : edgeList) {
+            for(Edge &e2 : edgeList) {
+                if(e1.v0->Position == e2.v0->Position && e1.v1->Position == e2.v1->Position ||
+                   e1.v0->Position == e2.v1->Position && e1.v1->Position == e2.v0->Position) {
+                    Edge bendingEdge;
+                    std::set<Vertex_H*> vertexSet; // 用于存储三角形索引
+                    std::vector<Vertex_H*> &vertices = triangleVertices[e1.triangleIndex]; // 引用
+                    vertexSet.insert(e1.v0);
+                    vertexSet.insert(e1.v1);
+                    for(Vertex_H* v : vertices) {
+                        if (vertexSet.find(v) != vertexSet.end()) {
+                            vertexSet.erase(v); // 如果左边三角形有这个顶点，则删除
+                        }
+                        else {
+                            vertexSet.insert(v); // 如果右边三角形有这个顶点，则添加
+                        }
+                    }
+                    vertices = triangleVertices[e2.triangleIndex];
+                    for(Vertex_H* v : vertices) {
+                        if (vertexSet.find(v) != vertexSet.end()) {
+                            vertexSet.erase(v); // 如果左边三角形有这个顶点，则删除
+                        }
+                        else {
+                            vertexSet.insert(v); // 如果右边三角形有这个顶点，则添加
+                        }
+                    }
+                    if(vertexSet.size() == 2) {
+                        auto it = vertexSet.begin();
+                        bendingEdge.v0 = *it; // 第一个顶点
+                        it++;
+                        bendingEdge.v1 = *it; // 第二个顶点
+                        bendingEdge.lenght = glm::length(bendingEdge.v0->Position - bendingEdge.v1->Position);
+                        bendingEdge.triangleIndex = e1.triangleIndex; // 绑定边的三角图元索引
+                        bendingEdges.push_back(bendingEdge);
+                    }
+                }
+            }
+        }
+    }
+
+    // 绑定边到边列表
+    // 并清空绑定边和边到三角形的映射
+    void bendingToEdges(){
+        edgeList.insert(edgeList.end(), bendingEdges.begin(), bendingEdges.end());
+        bendingEdges.clear(); // 清空绑定边
+        edgeToTriangle.clear(); // 清空边到三角形的映射
+    }
+
+
+    // TODO
+    void edgesUnion(){
+        for(Edge &e1 : edgeList) {
+            for(Edge &e2 : edgeList) {
+                if(e1.v0->Position == e2.v0->Position && e1.v1->Position == e2.v1->Position) {
+                    e2 = e1; // 如果两个边的顶点位置相同，则合并
+                }
+            }
+        }
+    }
+
+    // TODO
+    void particleUnion(){
+        for(Vertex_H* p1 : allParticles) {
+            int i = 0;
+            for(Vertex_H* p2 : allParticles) {
+                if(p1->Position == p2->Position && p1 != p2) {
+                    // 如果两个粒子的位置相同，则合并
+                    p2 = p1; // 将p2指向p1
+                    // 删除p2
+                }
+            }
+        }
     }
 };
 

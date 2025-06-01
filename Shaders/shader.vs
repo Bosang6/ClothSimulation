@@ -21,6 +21,9 @@ uniform mat4 projection;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
 
+uniform bool drawAsSphere;
+uniform float pointSize;
+
 void main()
 {
     // salvo i dati della base del mondo
@@ -42,4 +45,7 @@ void main()
     vs_out.TangentLightPos = TBN * lightPos;
     vs_out.TangentViewPos = TBN * viewPos;
     vs_out.TangentFragPos = TBN * vs_out.FragPos;
+
+    // if (drawAsSphere)
+    //     gl_PointSize = pointSize;
 }

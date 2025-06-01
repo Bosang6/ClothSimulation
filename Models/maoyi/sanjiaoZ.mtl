@@ -1,0 +1,26 @@
+# Blender 4.4.3 MTL File: 'None'
+# www.blender.org
+
+newmtl Ground_marker2
+Ka 0.200000 0.200000 0.200000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd Map #31
+map_Ns /Users/xiaobo/Downloads/airfield-ground-marker-2/source/Ground Marker 2/rusted_painted_metal_glossiness.png
+map_refl /Users/xiaobo/Downloads/airfield-ground-marker-2/source/Ground Marker 2/S:/Autodesk/3ds Max/maps/Reflection/Lakerem2.jpg
+map_Bump -bm 0.050000 /Users/xiaobo/Downloads/airfield-ground-marker-2/source/Ground Marker 2/rusty_metal_normal.png
+
+newmtl White_metal
+Ka 0.200000 0.200000 0.200000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd Map #43
+map_Ns /Users/xiaobo/Downloads/airfield-ground-marker-2/source/Ground Marker 2/rusted_painted_metal_glossiness.png
+map_refl /Users/xiaobo/Downloads/airfield-ground-marker-2/source/Ground Marker 2/S:/Autodesk/3ds Max/maps/Reflection/Lakerem2.jpg
+map_Bump -bm 0.050000 /Users/xiaobo/Downloads/airfield-ground-marker-2/source/Ground Marker 2/rusty_metal_normal.png

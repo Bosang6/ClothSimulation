@@ -1,0 +1,13 @@
+# Blender 4.4.3 MTL File: 'None'
+# www.blender.org
+
+newmtl Top_Low_obj
+Ka 1.000000 1.000000 1.000000
+Ks 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 3
+map_Kd nuBIG/MH_Top_F_White_albedo.png
+map_Ns nuBIG/MH_Top_F_White_roughness.png
+map_Bump -bm 1.000000 nuBIG/MH_Top_F_White_normal.png

@@ -14,8 +14,26 @@ in VS_OUT {
 
 uniform bool normalMapping;
 
+uniform bool drawAsSphere;
+
 void main()
-{    
+{  
+    // if(drawAsSphere){
+    //     vec2 coord = gl_PointCoord * 2.0 - 1.0;
+    //     float dist = dot(coord, coord);
+    //     if(dist > 1.0) {
+    //         discard; // discard fragments outside the sphere
+    //     }
+
+    //     vec3 normal = normalize(vec3(coord, sqrt(1.0 - dist)));
+    //     vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+    //     float diffuse = max(dot(normal, lightDir), 0.0);
+
+    //     vec3 color = vec3(1.0, 0.3, 0.3); // 球体颜色
+    //     FragColor = vec4(color * diffuse, 1.0);
+    //     return;
+    // }
+
     // normal [0, 1] -> [-1, 1]
     vec3 normal = texture(texture_normal1, fs_in.TexCoords).rgb;
     normal = normalize(normal * 2.0 - 1.0);
