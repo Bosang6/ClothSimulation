@@ -60,7 +60,7 @@ add_executable(ClothSimulation
 # ----------------------------
 
 target_include_directories(ClothSimulation PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/Headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/external
     ${CMAKE_CURRENT_SOURCE_DIR}/external/glad/include
     ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui

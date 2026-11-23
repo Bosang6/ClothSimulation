@@ -1,2 +1,5 @@
-# Normalize Particle.h to LF
-Headers/Particle.h text eol=lf
+# Project source files
+/include/** text eol=lf
+/src/** text eol=lf
+/Shaders/** text eol=lf
+/CMakeLists.txt text eol=lf
