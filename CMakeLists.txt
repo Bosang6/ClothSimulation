@@ -37,11 +37,19 @@ add_subdirectory(external/assimp)
 find_package(OpenGL REQUIRED)
 
 # ----------------------------
+# Project source files
+# ----------------------------
+
+file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+)
+
+# ----------------------------
 # Application sources
 # ----------------------------
 
 add_executable(ClothSimulation
-    src/main.cpp
+    ${PROJECT_SOURCES}
 
     external/glad/src/glad.c
 
