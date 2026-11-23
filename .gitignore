@@ -8,9 +8,13 @@
 __MACOSX/
 
 # ============================
-# Windows / Visual Studio
+# Windows / Visual Studio / VS Code
 # ============================
-.vs/
+/.vscode/*
+!/.vscode/launch.json
+!/.vscode/settings.json
+!/.vscode/extensions.json
+
 *.suo
 *.user
 *.VC.db
@@ -31,7 +35,6 @@ compile_commands.json
 # ============================
 imgui.ini
 .idea/
-.vscode/
 
 # ============================
 # Local 3D Assets
