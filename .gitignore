@@ -40,5 +40,12 @@ imgui.ini
 # OBJ, MTL, textures and other model assets
 /Models/
 
+# Third-party test data and examples
+/external/assimp/test/
+/external/assimp/samples/
+/external/assimp/fuzz/
+/external/glfw/tests/
+/external/glfw/examples/
+
 /ClothSimulation
 /ClothSimulation.exe

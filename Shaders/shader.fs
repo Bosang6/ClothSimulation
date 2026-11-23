@@ -16,8 +16,17 @@ uniform bool normalMapping;
 
 uniform bool drawAsSphere;
 
+uniform bool showWireframePass;
+
 void main()
 {  
+    // Wireframe pass: use a fixed visible color
+    if (showWireframePass) {
+        FragColor = vec4(0.0, 1.0, 0.8, 1.0);
+        return;
+    }
+    // Keep the original texture and lighting code below
+
     // if(drawAsSphere){
     //     vec2 coord = gl_PointCoord * 2.0 - 1.0;
     //     float dist = dot(coord, coord);
@@ -53,6 +62,6 @@ void main()
     float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
     vec3 specular = vec3(0.2) * spec;
 
-    //FragColor = vec4(ambient + diffuse + specular, 1.0);
-    FragColor = vec4(ambient, 1.0);
+    FragColor = vec4(ambient + diffuse + specular, 1.0);
+    //FragColor = vec4(ambient, 1.0);
 }

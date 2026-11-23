@@ -200,11 +200,13 @@ int main() {
 
     static std::string selectedFile = "Models/lino/YIFU1.obj";
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     //glEnable(GL_PROGRAM_POINT_SIZE); 
 
     // 初始化 simulator
     Simulator simulator(allParticles, edges, bendingEdges, staticParticles, models, hash);
+
+    bool showWireframe = true;
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = (float)glfwGetTime();
@@ -226,6 +228,8 @@ int main() {
             frameCount = 0;
             lastTime = currentTime;
         }
+
+        ImGui::Checkbox("Show Wireframe", &showWireframe);
         
         ImGui::Begin("Preme SPAZIO per disattivare camera");
 
@@ -348,11 +352,35 @@ int main() {
         model = glm::scale(model, glm::vec3(modelSize, modelSize, modelSize));	// it's a bit too big for our scene, so scale it down
         shader.setMat4("model", model);
 
+        if (showWireframe) {
+            // Push filled surfaces slightly back in depth
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(1.0f, 1.0f);
+        }
+
         for (size_t i = 0; i < models.size(); ++i) {
             models[i].Draw(shader);
         }
         //drawParticlesAsSpheres(shader);
         //ModelLoaded.Draw(shader);
+
+        if (showWireframe) {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+
+            // Pass 2: draw visible mesh edges
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glLineWidth(1.0f);
+
+            shader.setBool("showWireframePass", true);
+
+            for (auto& m : models) {
+                m.Draw(shader);
+            }
+
+            // Restore OpenGL state
+            shader.setBool("showWireframePass", false);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
 
         // ImGui render
         ImGui::Render();

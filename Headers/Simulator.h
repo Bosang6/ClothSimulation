@@ -3,7 +3,7 @@
 #include "Hash.h"
 #include "Model.h"
 #include <vector>
-#include <omp.h>
+// #include <omp.h>
 
 class Simulator {
 public:

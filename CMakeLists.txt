@@ -1,52 +1,96 @@
-cmake_minimum_required(VERSION 3.16)
-project(ClothSimulation)
+
+cmake_minimum_required(VERSION 3.22)
+
+project(ClothSimulation LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 设置头文件搜索路径
-include_directories(
-    ${PROJECT_SOURCE_DIR}/Headers
-    ${PROJECT_SOURCE_DIR}/Includes
-    ${PROJECT_SOURCE_DIR}/external/glad/include
-    ${PROJECT_SOURCE_DIR}/external/imgui
-    ${PROJECT_SOURCE_DIR}/external/imgui/backends
-    ${PROJECT_SOURCE_DIR}/external/stb
-    ${PROJECT_SOURCE_DIR}/external/tinyfiledialogs
-    ${PROJECT_SOURCE_DIR}/external/
-    /opt/homebrew/include         # 如果是 Intel Mac 改成 /usr/local/include
-    /opt/homebrew/opt/libomp/include  # ✅ 添加这行！
-)
+# ----------------------------
+# Third-party build options
+# ----------------------------
 
-# 设置库文件搜索路径
-link_directories(/opt/homebrew/lib)
+# Prefer static libraries
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-# 收集源文件
-file(GLOB_RECURSE SRC_FILES
-    src/*.cpp
+# GLFW
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+
+# Assimp
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+
+# ----------------------------
+# Third-party dependencies
+# ----------------------------
+
+add_subdirectory(external/glfw)
+add_subdirectory(external/assimp)
+
+find_package(OpenGL REQUIRED)
+
+# ----------------------------
+# Application sources
+# ----------------------------
+
+add_executable(ClothSimulation
+    src/main.cpp
+
     external/glad/src/glad.c
-    external/imgui/*.cpp
+
+    external/imgui/imgui.cpp
+    external/imgui/imgui_draw.cpp
+    external/imgui/imgui_tables.cpp
+    external/imgui/imgui_widgets.cpp
     external/imgui/backends/imgui_impl_glfw.cpp
     external/imgui/backends/imgui_impl_opengl3.cpp
+
     external/tinyfiledialogs/tinyfiledialogs.c
 )
 
-# 创建可执行程序
-add_executable(ClothSimulation ${SRC_FILES})
+# ----------------------------
+# Include directories
+# ----------------------------
 
-
-# ✅ 把可执行文件输出到项目根目录
-set_target_properties(ClothSimulation PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}
+target_include_directories(ClothSimulation PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/external
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/glad/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui/backends
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/stb
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/tinyfiledialogs
 )
 
-# 链接系统库和 Homebrew 库
-target_link_libraries(ClothSimulation
+# ----------------------------
+# Link libraries
+# ----------------------------
+
+target_link_libraries(ClothSimulation PRIVATE
     glfw
-    assimp
-    "-framework OpenGL"
-    "-framework Cocoa"
-    "-framework IOKit"
-    "-framework CoreVideo"
-    /opt/homebrew/opt/libomp/lib/libomp.dylib
+    assimp::assimp
+    OpenGL::GL
 )
+
+# ----------------------------
+# Output directory
+# ----------------------------
+
+set_target_properties(ClothSimulation PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY
+        "${CMAKE_BINARY_DIR}/bin"
+)
+
+
+# Windows MSVC: use UTF-8 source encoding
+if(MSVC)
+    target_compile_options(ClothSimulation PRIVATE /utf-8)
+endif()
 
