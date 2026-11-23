@@ -1,0 +1,44 @@
+
+# ============================
+# macOS
+# ============================
+.DS_Store
+._*
+.AppleDouble
+__MACOSX/
+
+# ============================
+# Windows / Visual Studio
+# ============================
+.vs/
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+
+# ============================
+# CMake / Build
+# ============================
+/build/
+/build-*/
+/cmake-build-/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+# ============================
+# Runtime / Editor
+# ============================
+imgui.ini
+.idea/
+.vscode/
+
+# ============================
+# Local 3D Assets
+# ============================
+
+# OBJ, MTL, textures and other model assets
+/Models/
+
+/ClothSimulation
+/ClothSimulation.exe
